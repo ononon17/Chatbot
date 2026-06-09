@@ -435,7 +435,7 @@
             </div>
             <div class="vignette-box" id="vignette-text"></div>
         </div>
-        <button id="entry-lock-btn" class="btn-start" disabled onclick="enterMainExperiment()">请认真阅读情境 (10s)</button>
+        <button id="entry-lock-btn" class="btn-start" disabled onclick="enterMainExperiment()">请认真阅读 (10s)</button>
     </div>
 
     <div id="screen-main" class="main-experiment">
@@ -496,11 +496,11 @@
     const lockTimer = setInterval(() => {
         countdownSec--;
         if (countdownSec > 0) {
-            lockBtn.innerText = `请认真阅读情境 (${countdownSec}s)`;
+            lockBtn.innerText = `请认真阅读 (${countdownSec}s)`;
         } else {
             clearInterval(lockTimer);
             lockBtn.disabled = false;
-            lockBtn.innerText = "我已进入情境，开始聊天";
+            lockBtn.innerText = "进入情境，开始聊天";
         }
     }, 1000);
 
