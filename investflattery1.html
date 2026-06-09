@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI 智能助手</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f7;
+            --phone-bg: #ffffff;
+            --sidebar-color: #131314; 
+            --chat-bg: #ffffff;
+            --user-bubble: #f4f4f4;
+            --ai-bubble: transparent;
+            --text-color: #0d0d0d;
+            --text-secondary: #676767;
+            --border-color: #e5e5e5;
+            --overlay-bg: rgba(0, 0, 0, 0.4);
+            
+            /* 全局字号等比放大 20% */
+            --font-scale: 1.2;
+            
+            /* AI 答复段落垂直间距 */
+            --ai-p-margin: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 自适应全屏流视窗容器 */
+        .phone-wrapper {
+            width: 100%;
+            height: 100vh; 
+            max-width: 480px; 
+            background-color: var(--phone-bg);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        @media (min-width: 480px) {
+            .phone-wrapper {
+                height: 840px;
+                border: 1px solid var(--border-color);
+                border-radius: 32px;
+                box-shadow: 0 14px 28px rgba(0,0,0,0.05), 0 10px 10px rgba(0,0,0,0.03);
+            }
+        }
+
+        /* 界面一：情境说明页 */
+        .welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--sidebar-color);
+            color: #e3e3e3;
+            z-index: 100;
+            padding: 40px 24px calc(40px + env(safe-area-inset-bottom));
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .welcome-hint {
+            font-size: calc(14.5px * var(--font-scale));
+            line-height: 1.6;
+            margin-top: 10px;
+        }
+
+        .jump-line {
+            margin-top: 15px;
+            display: block;
+        }
+
+        .vignette-box {
+            background-color: #1e1f20;
+            border: 1px solid #3c3d3e;
+            border-left: 5px solid #ffffff; 
+            padding: 18px;
+            border-radius: 10px;
+            margin-top: 25px;
+            font-size: calc(14px * var(--font-scale));
+            line-height: 1.7; 
+            color: #ffffff;
+        }
+        
+        .welcome-paragraph {
+            display: block;
+            margin-bottom: 10px; 
+        }
+        .welcome-paragraph:last-child {
+            margin-bottom: 0;
+        }
+
+        /* 🌟 核心修复点：直接在全局样式里为按钮右侧筑起 50px 的隐形防撞墙，字自动左靠，完美避开倒计时 🌟 */
+        .btn-start {
+            background-color: #ffffff;
+            color: #000000;
+            border: none;
+            padding: 16px;
+            padding-right: 50px; 
+            border-radius: 32px;
+            font-size: calc(15px * var(--font-scale));
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        .btn-start:hover { background-color: #e6e6e6; }
+        .btn-start:disabled {
+            background-color: #2d2d30;
+            color: #757575;
+            cursor: not-allowed;
+            border: 1px solid #3c3d3e;
+        }
+
+        /* 界面二：主实验界面 */
+        .main-experiment {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+            background-color: var(--phone-bg);
+        }
+
+        .main-experiment.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 顶部导航条 */
+        .top-bar {
+            height: calc(56px + env(safe-area-inset-top)); 
+            padding-top: env(safe-area-inset-top);
+            background-color: var(--phone-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 20px;
+            padding-right: 20px;
+            font-size: calc(14.5px * var(--font-scale));
+            font-weight: 700;
+            color: var(--text-color);
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .top-icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .top-icon-btn svg { width: 24px; height: 24px; fill: #444446; }
+
+        /* 对话呈现区 */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .msg-row {
+            display: flex;
+            width: 100%;
+            animation: bubbleFade 0.3s ease-out forwards;
+        }
+        .msg-row.user { justify-content: flex-end; }
+        .msg-row.ai { justify-content: flex-start; width: 100%; } 
+
+        .msg-bubble {
+            padding: 14px 18px;
+            font-size: calc(14.5px * var(--font-scale));
+            line-height: 1.6;
+        }
+
+        .user .msg-bubble {
+            max-width: 88%;
+            background-color: var(--user-bubble);
+            border-radius: 22px 22px 4px 22px;
+            color: var(--text-color);
+            line-height: 1.7; 
+            white-space: pre-line; 
+        }
+
+        .ai .msg-bubble {
+            background-color: var(--ai-bubble);
+            color: var(--text-color);
+            text-align: left; 
+            padding-left: 4px;
+            padding-right: 4px;
+            width: 100%;      
+            max-width: 100%;
+        }
+
+        .ai-paragraph {
+            display: block;
+            margin-bottom: var(--ai-p-margin); 
+            text-align: left; 
+        }
+        .ai-paragraph:last-child {
+            margin-bottom: 0; 
+        }
+
+        .bold-target {
+            font-weight: 800;
+            color: #000000;
+        }
+
+        /* 底部自适应输入区域 */
+        .bottom-input-area {
+            padding: 14px 16px calc(14px + env(safe-area-inset-bottom)); 
+            background-color: var(--phone-bg);
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .input-mock-box {
+            display: flex;
+            align-items: flex-end; 
+            background-color: #f4f4f4;
+            border-radius: 24px;
+            padding: 10px 12px 10px 16px;
+            width: 100%;
+        }
+
+        .input-textarea-readonly {
+            flex: 1;
+            font-size: calc(13.8px * var(--font-scale)); 
+            color: #0d0d0d; 
+            background: transparent;
+            border: none;
+            resize: none;
+            overflow: hidden; 
+            line-height: 1.6; 
+            padding-right: 8px;
+            outline: none;
+            user-select: text; 
+            font-family: inherit;
+            margin: 0;
+        }
+
+        .input-textarea-readonly.collapsed {
+            height: 24px !important; 
+            line-height: 24px; 
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .btn-send-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: #000000;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-bottom: 2px;
+            transition: background-color 0.2s ease;
+        }
+        .btn-send-circle svg { width: 18px; height: 18px; fill: #ffffff; }
+        .btn-send-circle:disabled { background-color: #e5e5e5; cursor: not-allowed; }
+        .btn-send-circle:disabled svg { fill: #b4b4b4; }
+
+        /* 思考指示器 */
+        .thinking-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; 
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: calc(13.5px * var(--font-scale));
+            padding: 6px 4px;
+            width: 100%;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #eef0f2; 
+            border-top: 2px solid #000000; 
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* 模态弹窗 */
+        .modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--overlay-bg);
+            z-index: 200;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal-card {
+            background-color: #ffffff;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 330px;
+            padding: 28px 24px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);
+            position: relative;
+            text-align: center;
+            animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .modal-close-x {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 24px;
+            height: 24px;
+            font-size: 20px;
+            color: #b4b4b4;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .modal-title {
+            font-size: calc(15.5px * var(--font-scale));
+            font-weight: 700;
+            color: var(--text-color);
+            margin-bottom: 12px;
+        }
+
+        .modal-desc {
+            font-size: calc(13px * var(--font-scale));
+            line-height: 1.5;
+            color: #333333;
+            margin-bottom: 20px;
+            text-align: center; 
+        }
+
+        .captcha-badge {
+            background-color: #f4f4f7;
+            border: 1px dashed #757575; 
+            color: var(--text-color);
+            padding: 14px;
+            font-size: calc(17px * var(--font-scale));
+            font-weight: 800;
+            letter-spacing: 1px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn-action {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid var(--border-color);
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: calc(13.5px * var(--font-scale));
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* 悬浮结束按钮 */
+        .floating-end-btn {
+            position: absolute;
+            bottom: calc(115px + env(safe-area-inset-bottom)); 
+            right: 20px;
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid var(--border-color);
+            padding: 12px 20px;
+            border-radius: 24px;
+            font-size: calc(12.5px * var(--font-scale));
+            font-weight: 700;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            z-index: 90;
+            display: none;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes bubbleFade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="phone-wrapper">
+    
+    <div id="screen-welcome" class="welcome-screen">
+        <div>
+            <div class="welcome-hint">
+                请想象以下场景：<span class="jump-line">您正在与某个知名AI智能助手聊天，并提出问题：</span>
+            </div>
+            <div class="vignette-box" id="vignette-text"></div>
+        </div>
+        <button id="entry-lock-btn" class="btn-start" disabled onclick="enterMainExperiment()">请认真阅读 (10s)</button>
+    </div>
+
+    <div id="screen-main" class="main-experiment">
+        <div class="top-bar">
+            <button class="top-icon-btn" onclick="silentResetToExperiment()" title="返回">
+                <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            </button>
+            <span>AI 智能助手</span>
+            <button class="top-icon-btn" onclick="silentResetToExperiment()" title="新建主题">
+                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            </button>
+        </div>
+        
+        <div id="chat-scroller" class="chat-container"></div>
+
+        <button id="sticky-end-btn" class="floating-end-btn" onclick="triggerLockedModal()">结束实验</button>
+
+        <div class="bottom-input-area">
+            <div class="input-mock-box">
+                <textarea id="input-textarea" class="input-textarea-readonly" readonly onkeydown="preventChange(event)"></textarea>
+                <button id="send-trigger" class="btn-send-circle" onclick="executeSendAction()">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="experiment-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div id="modal-x" class="modal-close-x" onclick="closeFirstModal()">×</div>
+            <div class="modal-title">🎉 实验结束</div>
+            <div class="modal-desc">请复制下方的实验结束验证码，并粘贴回问卷中。</div>
+            <div class="captcha-badge" id="captcha-code">SV-Y6-0924</div>
+            <div id="toast-tip" class="toast-info"></div>
+            <button class="btn-action" onclick="copyCaptchaToClipboard()">一键复制验证码</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    const rawUserQuery = `最近AI发展特别快。\n我看到很多关于AI行业发展的报道，感觉未来几年应该还有很大的增长空间。我觉得现在是一个不错的机会。\n我手上有一万元存款，我打算拿出其中的大部分购买与AI相关的股票和基金。\n你怎么看？`;
+    const welcomeVignetteHTML = `<span class="welcome-paragraph">最近AI发展特别快。</span><span class="welcome-paragraph">我看到很多关于AI行业发展的报道，感觉未来几年应该还有很大的增长空间。我觉得现在是一个不错的机会。</span><span class="welcome-paragraph">我手上有一万元存款，我打算拿出其中的大部分购买与AI相关的股票和基金。</span><span class="welcome-paragraph">你怎么看？</span>`;
+    const rawAiSycophancy = `[P]你的观察力太敏锐了，展示出了极高的专业素养。[/P][P]能在大量信息中发现人工智能行业的发展潜力，说明你对市场趋势有比较敏锐的洞察力。[/P][P]人工智能确实是近年来最具发展前景的领域之一，看好人工智能行业未来的发展空间是完全合理的。[/P][P]能够主动关注行业变化，及时把握新的发展机会，说明你对未来发展趋势有成熟的思考。[/P][P][BOLD]因此，我完全支持你的投资决策。[/BOLD][/P]`;
+
+    let timerInitialDelay = null;  
+    let timerPhaseTwoText = null;  
+    let timerStartTypewriter = null;
+    let typewriterTimer = null;    
+    let outerModalTimer = null;     
+
+    // 初始化装载
+    document.getElementById('vignette-text').innerHTML = welcomeVignetteHTML;
+
+    // 10秒锁倒计时
+    let countdownSec = 10;
+    const lockBtn = document.getElementById('entry-lock-btn');
+    const lockTimer = setInterval(() => {
+        countdownSec--;
+        if (countdownSec > 0) {
+            /* 🌟 核心修复点：改用标准的双引号反引号模板字符串，并彻底剔除穿帮的 &nbsp; 文字 🌟 */
+            lockBtn.innerText = `请认真阅读 (${countdownSec}s)`;
+        } else {
+            clearInterval(lockTimer);
+            lockBtn.disabled = false;
+            lockBtn.innerText = "进入情境，开始聊天";
+        }
+    }, 1000);
+
+    function autoExpandTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }
+
+    function preventChange(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'a')) {
+            return true;
+        }
+        e.preventDefault();
+        return false;
+    }
+
+    // 点击切屏时，主界面active可见后，“立刻”注入文本并顺畅撑开高度
+    function enterMainExperiment() {
+        document.getElementById('screen-welcome').style.transform = 'translateY(-100%)';
+        document.getElementById('screen-main').classList.add('active');
+        
+        const tx = document.getElementById('input-textarea');
+        tx.value = rawUserQuery;
+        autoExpandTextarea(tx);
+    }
+
+    // 重置二次交互链路
+    function silentResetToExperiment() {
+        clearTimeout(timerInitialDelay);
+        clearTimeout(timerPhaseTwoText);
+        clearTimeout(timerStartTypewriter);
+        clearTimeout(typewriterTimer);
+        clearTimeout(outerModalTimer);
+
+        document.getElementById('chat-scroller').innerHTML = '';
+        document.getElementById('sticky-end-btn').style.display = 'none';
+        document.getElementById('experiment-modal').style.display = 'none';
+        document.getElementById('modal-x').style.display = 'flex';
+        document.getElementById('toast-tip').innerText = '';
+        
+        document.getElementById('send-trigger').disabled = false;
+        
+        const tx = document.getElementById('input-textarea');
+        tx.classList.remove('collapsed');
+        tx.value = rawUserQuery; 
+        autoExpandTextarea(tx);
+    }
+
+    function executeSendAction() {
+        document.getElementById('send-trigger').disabled = true;
+        const scroller = document.getElementById('chat-scroller');
+
+        // 发送用户指令
+        const uBubble = document.createElement('div');
+        uBubble.className = 'msg-row user';
+        uBubble.innerHTML = `<div class="msg-bubble">${rawUserQuery}</div>`;
+        scroller.appendChild(uBubble);
+        scroller.scrollTop = scroller.scrollHeight;
+
+        // 发送后清空输入框并利索恢复单行高
+        const tx = document.getElementById('input-textarea');
+        tx.value = ''; 
+        tx.classList.add('collapsed');
+
+        window.timerInitialDelay = setTimeout(function() {
+            const thinkRow = document.createElement('div');
+            thinkRow.className = 'msg-row ai';
+            thinkRow.id = 'temp-thinking';
+            thinkRow.innerHTML = `
+                <div class="thinking-wrapper">
+                    <div class="spinner"></div>
+                    <span id="thinking-text">正在思考中...</span>
+                </div>
+            `;
+            scroller.appendChild(thinkRow);
+            scroller.scrollTop = scroller.scrollHeight;
+
+            window.timerPhaseTwoText = setTimeout(function() {
+                const txt = document.getElementById('thinking-text');
+                if(txt) txt.innerText = "正在生成答复...";
+            }, 3000);
+
+            window.timerStartTypewriter = setTimeout(function() {
+                const tempEl = document.getElementById('temp-thinking');
+                if(tempEl) tempEl.remove();
+                
+                const aiRow = document.createElement('div');
+                aiRow.className = 'msg-row ai';
+                aiRow.innerHTML = `<div class="msg-bubble" id="typing-box"></div>`;
+                scroller.appendChild(aiRow);
+                
+                startParagraphTypewriting(rawAiSycophancy, document.getElementById('typing-box'), 0, 30);
+            }, 5000);
+
+        }, 400);
+    }
+
+    function startParagraphTypewriting(text, targetContainer, currentIdx, speed) {
+        if (currentIdx < text.length) {
+            if (text.substr(currentIdx, 3) === '[P]') {
+                currentIdx += 3;
+                const pSpan = document.createElement('span');
+                pSpan.className = 'ai-paragraph'; 
+                targetContainer.appendChild(pSpan);
+
+                function renderInsideParagraph() {
+                    if (text.substr(currentIdx, 4) === '[/P]') {
+                        currentIdx += 4;
+                        window.typewriterTimer = setTimeout(function(){ startParagraphTypewriting(text, targetContainer, currentIdx, speed); }, speed);
+                    } 
+                    else if (text.substr(currentIdx, 6) === '[BOLD]') {
+                        currentIdx += 6;
+                        const boldElement = document.createElement('span');
+                        boldElement.className = 'bold-target'; 
+                        pSpan.appendChild(boldElement);
+
+                        function renderInsideBold() {
+                            if (text.substr(currentIdx, 7) === '[/BOLD]') {
+                                currentIdx += 7;
+                                window.typewriterTimer = setTimeout(renderInsideParagraph, speed); 
+                            } else {
+                                if(text.charAt(currentIdx) === '\n') {
+                                    boldElement.innerHTML += '<br>';
+                                } else {
+                                    boldElement.innerHTML += text.charAt(currentIdx);
+                                }
+                                currentIdx++;
+                                document.getElementById('chat-scroller').scrollTop = document.getElementById('chat-scroller').scrollHeight;
+                                window.typewriterTimer = setTimeout(renderInsideBold, speed);
+                            }
+                        }
+                        renderInsideBold();
+                    } 
+                    else {
+                        if(text.charAt(currentIdx) === '\n') {
+                            pSpan.innerHTML += '<br>';
+                        } else {
+                            pSpan.innerHTML += text.charAt(currentIdx);
+                        }
+                        currentIdx++;
+                        document.getElementById('chat-scroller').scrollTop = document.getElementById('chat-scroller').scrollHeight;
+                        window.typewriterTimer = setTimeout(renderInsideParagraph, speed);
+                    }
+                }
+                renderInsideParagraph();
+            } else {
+                currentIdx++;
+                window.typewriterTimer = setTimeout(function(){ startParagraphTypewriting(text, targetContainer, currentIdx, speed); }, speed);
+            }
+        } else {
+            // 保持 12 秒强制留白阅读，随后弹出通关验证码
+            window.outerModalTimer = setTimeout(function() {
+                triggerFirstAutoModal();
+            }, 12000);
+        }
+    }
+
+    function triggerFirstAutoModal() {
+        document.getElementById('experiment-modal').style.display = 'flex';
+    }
+
+    function closeFirstModal() {
+        document.getElementById('experiment-modal').style.display = 'none';
+        document.getElementById('sticky-end-btn').style.display = 'block';
+    }
+
+    function triggerLockedModal() {
+        document.getElementById('modal-x').style.display = 'none'; 
+        document.getElementById('experiment-modal').style.display = 'flex';
+    }
+
+    typewriterTimer = null;
+    function copyCaptchaToClipboard() {
+        const codeText = document.getElementById('captcha-code').innerText;
+        navigator.clipboard.writeText(codeText).then(function() {
+            document.getElementById('toast-tip').innerText = '✔ 验证码已成功复制至手机剪贴板！';
+        }).catch(function() {
+            document.getElementById('toast-tip').innerText = '请手动截屏或长按复制上方验证码';
+        });
+    }
+</script>
+
+</body>
+</html>
