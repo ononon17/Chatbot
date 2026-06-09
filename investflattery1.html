@@ -496,11 +496,11 @@
     const lockTimer = setInterval(() => {
         countdownSec--;
         if (countdownSec > 0) {
-            lockBtn.innerText = `请认真阅读 (${countdownSec}s)`;
+            lockBtn.innerText = `请认真阅读 (${countdownSec}s)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`;
         } else {
             clearInterval(lockTimer);
             lockBtn.disabled = false;
-            lockBtn.innerText = "进入情境，开始聊天";
+            lockBtn.innerText = "进入情境，开始聊天&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
         }
     }, 1000);
 
