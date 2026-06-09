@@ -444,14 +444,14 @@
     window.lockTimer = setInterval(function() {
         window.countdownSec--;
         if (window.countdownSec > 0) {
-            lockBtn.innerText = '请认真阅读(' + window.countdownSec + 's)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+            lockBtn.innerText = '请认真阅读(' + window.countdownSec + 's)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
         } else {
             clearInterval(window.lockTimer);
             lockBtn.disabled = false;
             lockBtn.style.backgroundColor = '#ffffff';
             lockBtn.style.color = '#000000';
             lockBtn.style.cursor = 'pointer';
-            lockBtn.innerText = '进入情境，开始聊天&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+            lockBtn.innerText = '进入情境，开始聊天&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
         }
     }, 1000);
   "
